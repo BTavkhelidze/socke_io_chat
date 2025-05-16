@@ -8,11 +8,14 @@ const socket = io('http://localhost:3000');
 function App() {
   const [inputVal, setInputVal] = useState('');
   const [recivedData, setRecivedData] = useState([]);
+  const [user, setUser] = useState();
   const [userName, setUserName] = useState('');
   const [roomId, setRoomId] = useState('');
   const [showChat, setShowChat] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
 
   const sendMessage = () => {
+    // setClicked(true)
     const data = {
       author: userName,
       message: inputVal,
@@ -22,20 +25,33 @@ function App() {
     socket.emit('sendMessage', data);
     setInputVal('');
   };
-  console.log(recivedData, 'recivedData');
   useEffect(() => {
-    socket.on('sendMessage', (data) =>
-      setRecivedData((prev) => [...prev, data])
-    );
-  }, [socket]);
+    const messageHandler = (data) => {
+      setRecivedData((prev) => [...prev, data]);
+    };
+
+    socket.on('sendMessage', messageHandler);
+    socket.on('joinRoom', (data) => setAllUsers(data));
+
+    return () => {
+      socket.off('sendMessage', messageHandler);
+      socket.off('joinRoom');
+    };
+  }, []);
 
   const joinNow = () => {
+    const data = {
+      roomId,
+      userName,
+    };
     if (roomId && userName) {
-      socket.emit('joinRoom', roomId);
+      socket.emit('joinRoom', data);
+
       setShowChat(true);
     }
   };
 
+  console.log(allUsers, 'setAllUsers');
   return (
     <div>
       {showChat ? (
@@ -46,7 +62,19 @@ function App() {
             onChange={(e) => setInputVal(e.target.value)}
           />
           <button onClick={sendMessage}>Send Message</button>
-
+          {userName && (
+            <p>
+              user <span className='userName'>{userName}</span> connected
+            </p>
+          )}
+          {allUsers && (
+            <div>
+              {allUsers.map((el) => (
+                <p key={el}>{el}</p>
+              ))}
+            </div>
+          )}
+          {/* {user && <p>{user} connected</p>} */}
           {recivedData.map((el) => (
             <div key={el.time}>
               <h2>{el.message}</h2>
